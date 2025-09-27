@@ -10,11 +10,14 @@
     "analyze": "cross-env ANALYZE=true next build",
     "postbuild": "node -e \"const fs=require('fs');if(fs.existsSync('out/index.html'))fs.copyFileSync('out/index.html','out/404.html');\"",
     "export": "next build",
-    "preview:static": "npx serve out -l 5173"
+    "preview:static": "npx serve out -l 5173",
+    "deploy": "next build && touch out/.nojekyll && gh-pages -d out -t true"
   },
+  "homepage": "https://[YOUR_GITHUB_USERNAME].github.io/Counting",
   "dependencies": {
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "gh-pages": "^6.3.0",
     "lucide-react": "^0.474.0",
     "next": "^14.2.5",
     "react": "^18.3.1",
