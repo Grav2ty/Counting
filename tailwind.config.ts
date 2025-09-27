@@ -16,6 +16,12 @@ const config: Config = {
       }
     },
     extend: {
+      backgroundImage: {
+        'dot-hearts': "url(\"data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 0L6 3L3 6L0 3L3 0Z' fill='%23EF4444' opacity='0.15'/%3E%3C/svg%3E\")",
+        'dot-diamonds': "url(\"data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 0L6 3L3 6L0 3L3 0Z' fill='%238B4513' opacity='0.15'/%3E%3C/svg%3E\")",
+        'dot-clubs': "url(\"data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='3' cy='3' r='3' fill='%2322C55E' opacity='0.15'/%3E%3C/svg%3E\")",
+        'dot-spades': "url(\"data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 0L6 3L3 6L0 3L3 0Z' fill='%231F2937' opacity='0.15'/%3E%3C/svg%3E\")"
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

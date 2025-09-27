@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
 export default function Page() {
   return (
@@ -10,7 +11,7 @@ export default function Page() {
         <header className="mb-10 text-center">
           <h1 className="text-4xl font-bold tracking-tight">Card Counter</h1>
           <p className="mt-2 text-muted-foreground">
-            <span className="text-red-600">-</span> 인 경우 Low 카드 확률 높음, <span className="text-green-600">+</span> 인 경우 High 카드 확률 높음. 8, 9는 중립
+            <span className="text-red-600">-</span> 인 경우 Low 카드 드로우 확률 높음, <span className="text-green-600">+</span> 인 경우 High 카드 드로우 확률 높음. 8, 9는 중립
           </p>
         </header>
 
@@ -91,7 +92,6 @@ function LandingGrid() {
 
       if (targetIndex !== -1 && removedItem) {
         // countsMap 업데이트
-        decrementCard({ suitKey, number });
         const newHistory = prevHistory.slice(0, targetIndex).concat(prevHistory.slice(targetIndex + 1));
         return newHistory; // 제거된 항목을 반영한 history 반환
       }
@@ -261,7 +261,7 @@ function NumbersPanel({ suit, lastClickedCard, isActive, getCount, onMouseAction
   const numbers = generateNumbers({ from: 1, to: 13 })
 
   return (
-    <section className="mt-8 rounded-xl border bg-card p-6">
+    <section className={cn("mt-8 rounded-xl border bg-card p-6", suit.key === 'hearts' && "bg-dot-hearts", suit.key === 'diamonds' && "bg-dot-diamonds", suit.key === 'clubs' && "bg-dot-clubs", suit.key === 'spades' && "bg-dot-spades")}>
       <header className="mb-4 flex items-center justify-between">
         <h2 className="text-xl font-semibold">{suit.label}</h2>
         <span className={`text-2xl ${suit.color}`}>{suit.symbol}</span>
@@ -274,19 +274,25 @@ function NumbersPanel({ suit, lastClickedCard, isActive, getCount, onMouseAction
           const isLastClicked = lastClickedCard?.suitKey === suit.key && lastClickedCard?.number === num
           const backgroundColorClass = isLastClicked 
             ? (lastClickedCard?.clickType === 'right' ? 'bg-green-500 text-white' : 'bg-red-500 text-white') 
-            : (count >= 4 ? 'bg-purple-500 text-white' : (active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'))
+            : (count >= 4 ? 'bg-purple-500 text-white' : (active ? 'bg-primary text-primary-foreground' : 'bg-white text-muted-foreground hover:bg-accent'))
           return (
             <button
               key={num}
               type="button"
-              className={`relative shrink-0 rounded-lg border px-6 py-4 text-lg font-semibold transition-colors ${backgroundColorClass}`}
+              className={cn(
+                "relative shrink-0 rounded-lg border-2 px-6 py-4 text-lg font-semibold transition-colors shadow-md",
+                backgroundColorClass,
+                active && !isLastClicked && "ring-2 ring-primary",
+                isLastClicked && lastClickedCard?.clickType === 'left' && "ring-2 ring-red-500",
+                isLastClicked && lastClickedCard?.clickType === 'right' && "ring-2 ring-green-500"
+              )}
               aria-pressed={active}
               aria-label={`${suit.label} ${getRankLabel(num)}`}
               role="listitem"
               onMouseDown={e => onMouseAction({ number: num, buttons: e.buttons, button: e.button })}
             >
               {getRankLabel(num)}
-              {count >= 2 && (
+              {count >= 1 && (
                 <span className="absolute -right-2 -top-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-foreground px-2 text-xs font-bold text-background">+{count}</span>
               )}
             </button>
@@ -326,7 +332,7 @@ function CardList({ countsMap, lastClickedCard, onMouseAction }: {
     <section className="mt-2 grid grid-cols-2 gap-4">
       <div className="col-span-1 space-y-3">
         {SUITS.slice(0, 2).map(suit => (
-          <div key={suit.key} className="rounded-lg border p-3">
+          <div key={suit.key} className={cn("rounded-lg border p-3", suit.key === 'hearts' && "bg-dot-hearts", suit.key === 'diamonds' && "bg-dot-diamonds")}>
             <div className="mb-2 flex items-center gap-2">
               <span className="text-md font-semibold">{suit.label}</span>
               <span className={`text-xl ${suit.color}`}>{suit.symbol}</span>
@@ -339,18 +345,24 @@ function CardList({ countsMap, lastClickedCard, onMouseAction }: {
                 const isLastClicked = lastClickedCard?.suitKey === suit.key && lastClickedCard?.number === num
                 const backgroundColorClass = isLastClicked 
                   ? (lastClickedCard?.clickType === 'right' ? 'bg-green-500 text-white' : 'bg-red-500 text-white') 
-                  : (count >= 4 ? 'bg-purple-500 text-white' : (active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'))
+                  : (count >= 4 ? 'bg-purple-500 text-white' : (active ? 'bg-primary text-primary-foreground' : 'bg-white text-muted-foreground hover:bg-accent'))
                 return (
                   <button
                     key={id}
                     type="button"
                     onMouseDown={e => onMouseAction({ suitKey: suit.key, number: num, buttons: e.buttons, button: e.button })}
-                    className={`relative flex items-center justify-center rounded-lg border aspect-square text-lg font-semibold transition-colors ${backgroundColorClass}`}
+                    className={cn(
+                      "relative flex items-center justify-center rounded-lg border-2 aspect-square text-lg font-semibold transition-colors shadow-md",
+                      backgroundColorClass,
+                      active && !isLastClicked && "ring-2 ring-primary",
+                      isLastClicked && lastClickedCard?.clickType === 'left' && "ring-2 ring-red-500",
+                      isLastClicked && lastClickedCard?.clickType === 'right' && "ring-2 ring-green-500"
+                    )}
                     aria-pressed={active}
                     aria-label={`${suit.label} ${getRankLabel(num)}`}
                   >
                     {getRankLabel(num)}
-                    {count >= 2 && (
+                    {count >= 1 && (
                       <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground text-[0.6rem] font-bold text-background">+{count}</span>
                     )}
                   </button>
@@ -362,7 +374,7 @@ function CardList({ countsMap, lastClickedCard, onMouseAction }: {
       </div>
       <div className="col-span-1 space-y-3">
         {SUITS.slice(2, 4).map(suit => (
-          <div key={suit.key} className="rounded-lg border p-3">
+          <div key={suit.key} className={cn("rounded-lg border p-3", suit.key === 'clubs' && "bg-dot-clubs", suit.key === 'spades' && "bg-dot-spades")}>
             <div className="mb-2 flex items-center gap-2">
               <span className="text-md font-semibold">{suit.label}</span>
               <span className={`text-xl ${suit.color}`}>{suit.symbol}</span>
@@ -375,18 +387,24 @@ function CardList({ countsMap, lastClickedCard, onMouseAction }: {
                 const isLastClicked = lastClickedCard?.suitKey === suit.key && lastClickedCard?.number === num
                 const backgroundColorClass = isLastClicked 
                   ? (lastClickedCard?.clickType === 'right' ? 'bg-green-500 text-white' : 'bg-red-500 text-white') 
-                  : (count >= 4 ? 'bg-purple-500 text-white' : (active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'))
+                  : (count >= 4 ? 'bg-purple-500 text-white' : (active ? 'bg-primary text-primary-foreground' : 'bg-white text-muted-foreground hover:bg-accent'))
                 return (
                   <button
                     key={id}
                     type="button"
                     onMouseDown={e => onMouseAction({ suitKey: suit.key, number: num, buttons: e.buttons, button: e.button })}
-                    className={`relative flex items-center justify-center rounded-lg border aspect-square text-lg font-semibold transition-colors ${backgroundColorClass}`}
+                    className={cn(
+                      "relative flex items-center justify-center rounded-lg border-2 aspect-square text-lg font-semibold transition-colors shadow-md",
+                      backgroundColorClass,
+                      active && !isLastClicked && "ring-2 ring-primary",
+                      isLastClicked && lastClickedCard?.clickType === 'left' && "ring-2 ring-red-500",
+                      isLastClicked && lastClickedCard?.clickType === 'right' && "ring-2 ring-green-500"
+                    )}
                     aria-pressed={active}
                     aria-label={`${suit.label} ${getRankLabel(num)}`}
                   >
                     {getRankLabel(num)}
-                    {count >= 2 && (
+                    {count >= 1 && (
                       <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground text-[0.6rem] font-bold text-background">+{count}</span>
                     )}
                   </button>
