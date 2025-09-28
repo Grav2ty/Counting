@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
@@ -31,6 +31,26 @@ function LandingGrid() {
 
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isLongPressRegisteredRef = useRef(false); // Flag to indicate if long press was successfully registered
+  const touchHandledRef = useRef(false); // Flag to prevent duplicate mouse events after touch
+  const shouldIgnoreMouseEvent = useRef(false); // New flag to manage mouse event ignoring
+
+  useEffect(() => {
+    const handleTouchMove = (e: TouchEvent) => {
+      // Only prevent default on touchmove if a long press timer is active
+      if (longPressTimerRef.current) {
+        e.preventDefault();
+      }
+    };
+    // For touchstart, do not preventDefault to avoid passive event listener issues
+    // The long press logic will handle the action, no need to block default behavior here
+    // document.addEventListener('touchstart', handleTouchMove, { passive: false }); // Removed
+    // Using `window` for `touchmove` as it applies globally for scrolling behavior
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    return () => {
+      // document.removeEventListener('touchstart', handleTouchMove); // Removed
+      window.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
 
   function handleSelectSuit({ key }: { key: string }) {
     if (!key) return
@@ -123,6 +143,10 @@ function LandingGrid() {
       return
     }
     if (button === 2) { // 우클릭: 카운트 감소, 합계에서는 마지막 동일 점수 항목 제거
+      const id = cardId({ suitKey, number });
+      if (!countsMap.has(id)) { // 카운트 맵에 없으면 아무것도 하지 않음
+        return;
+      }
       decrementCard({ suitKey, number })
       removeLastHistoryValue({ value: score, suitKey, number })
       return
@@ -131,11 +155,13 @@ function LandingGrid() {
       incrementCard({ suitKey, number })
       pushHistory({ delta: score, cardNumber: number, suitKey })
     }
-  }, [decrementCard, incrementCard, pushHistory, removeLastHistoryValue]);
+  }, [decrementCard, incrementCard, pushHistory, removeLastHistoryValue, countsMap]);
 
   const handleCardTouchStart = useCallback((suitKey: Suit['key'], number: number, e: React.TouchEvent<HTMLButtonElement>) => {
-    e.preventDefault(); // Prevent default mouse events
+    // e.preventDefault(); // Prevent default mouse events - Removed to avoid passive listener issues
     isLongPressRegisteredRef.current = false;
+    touchHandledRef.current = true; // A touch event has started
+    shouldIgnoreMouseEvent.current = true; // Ignore mouse events immediately
     if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
     }
@@ -143,7 +169,8 @@ function LandingGrid() {
         isLongPressRegisteredRef.current = true;
         handleMouseAction({ suitKey, number, buttons: 2, button: 2 }); // Simulate right-click
         longPressTimerRef.current = null;
-    }, 1500); // 1.5 seconds
+        shouldIgnoreMouseEvent.current = false; // Allow mouse events after long press
+    }, 700); // 0.7 seconds
   }, [handleMouseAction]);
 
   const handleCardTouchEnd = useCallback((suitKey: Suit['key'], number: number) => {
@@ -156,6 +183,9 @@ function LandingGrid() {
           handleMouseAction({ suitKey, number, buttons: 0, button: 0 }); // Simulate left-click
       }
       isLongPressRegisteredRef.current = false; // Reset for next interaction
+      // Reset touchHandledRef and shouldIgnoreMouseEvent after a short delay
+      touchHandledRef.current = false;
+      setTimeout(() => { shouldIgnoreMouseEvent.current = false; }, 500); // Allow mouse events after a short delay
   }, [handleMouseAction]);
 
   const handleCardTouchCancel = useCallback(() => {
@@ -164,6 +194,8 @@ function LandingGrid() {
           longPressTimerRef.current = null;
       }
       isLongPressRegisteredRef.current = false;
+      touchHandledRef.current = false; // Reset touchHandledRef as well
+      setTimeout(() => { shouldIgnoreMouseEvent.current = false; }, 500); // Allow mouse events after a short delay
   }, []);
 
   const selectedSuit = selectedSuitKey ? SUITS.find(s => s.key === selectedSuitKey) ?? null : null
@@ -235,7 +267,7 @@ function LandingGrid() {
       </section>
 
       <div className="mt-8 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-muted-foreground">전체 카드</h3>
+        <h3 className="text-sm font-medium text-muted-foreground">전체 카드 (선택 삭제는 우클릭, 길게 누르기)</h3> 
         <div className="flex items-center gap-2">
           <button type="button" onClick={resetAll} className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent">리셋</button>
         </div>
@@ -249,6 +281,8 @@ function LandingGrid() {
         onCardTouchEnd={handleCardTouchEnd}
         onCardTouchCancel={handleCardTouchCancel}
         isLongPressRegisteredRef={isLongPressRegisteredRef}
+        touchHandledRef={touchHandledRef}
+        shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
       />
 
       <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
@@ -289,13 +323,15 @@ function LandingGrid() {
           onCardTouchEnd={handleCardTouchEnd}
           onCardTouchCancel={handleCardTouchCancel}
           isLongPressRegisteredRef={isLongPressRegisteredRef}
+          touchHandledRef={touchHandledRef}
+          shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
         />
       )}
     </div>
   )
 }
 
-function NumbersPanel({ suit, lastClickedCard, isActive, getCount, onMouseAction, onCardTouchStart, onCardTouchEnd, onCardTouchCancel, isLongPressRegisteredRef }: {
+function NumbersPanel({ suit, lastClickedCard, isActive, getCount, onMouseAction, onCardTouchStart, onCardTouchEnd, onCardTouchCancel, isLongPressRegisteredRef, touchHandledRef, shouldIgnoreMouseEvent }: {
   suit: Suit
   lastClickedCard: { suitKey: Suit['key']; number: number; clickType: 'left' | 'right' } | null
   isActive: (n: number) => boolean
@@ -305,6 +341,8 @@ function NumbersPanel({ suit, lastClickedCard, isActive, getCount, onMouseAction
   onCardTouchEnd: (suitKey: Suit['key'], number: number) => void;
   onCardTouchCancel: () => void;
   isLongPressRegisteredRef: React.MutableRefObject<boolean>;
+  touchHandledRef: React.MutableRefObject<boolean>;
+  shouldIgnoreMouseEvent: React.MutableRefObject<boolean>;
 }) {
   const numbers = generateNumbers({ from: 1, to: 13 })
 
@@ -338,11 +376,21 @@ function NumbersPanel({ suit, lastClickedCard, isActive, getCount, onMouseAction
               aria-label={`${suit.label} ${getRankLabel(num)}`}
               role="listitem"
               onMouseDown={e => {
+                if (shouldIgnoreMouseEvent.current) {
+                  e.preventDefault();
+                  return;
+                }
+                // If a touch event just handled this, prevent mouse event duplication
+                if (touchHandledRef.current) {
+                  e.preventDefault();
+                  return;
+                }
                 if (isLongPressRegisteredRef.current) {
                   e.preventDefault();
                   return;
                 }
                 onMouseAction({ number: num, buttons: e.buttons, button: e.button });
+                e.stopPropagation(); // 이벤트 버블링 중단
               }}
               onTouchStart={(e) => onCardTouchStart(suit.key, num, e)}
               onTouchEnd={() => onCardTouchEnd(suit.key, num)}
@@ -367,8 +415,8 @@ function generateNumbers({ from, to }: { from: number; to: number }) {
 
 const SUITS: Suit[] = [
   { key: 'hearts', label: '하트', color: 'text-red-600', symbol: '♥' },
-  { key: 'diamonds', label: '다이아', color: 'text-[#8B4513]', symbol: '♦' }, // 새들브라운 색상 사용
-  { key: 'clubs', label: '클로버', color: 'text-green-600', symbol: '♣' },
+  { key: 'diamonds', label: '다이아', color: 'text-red-600', symbol: '♦' }, // 다이아몬드 색상을 빨간색으로 변경
+  { key: 'clubs', label: '클로버', color: 'text-gray-800', symbol: '♣' }, // 클로버 색상을 어두운 회색으로 변경
   { key: 'spades', label: '스페이드', color: 'text-gray-800', symbol: '♠' }
 ]
 
@@ -379,7 +427,7 @@ interface Suit {
   symbol: string
 }
 
-function CardList({ countsMap, lastClickedCard, onMouseAction, onCardTouchStart, onCardTouchEnd, onCardTouchCancel, isLongPressRegisteredRef }: {
+function CardList({ countsMap, lastClickedCard, onMouseAction, onCardTouchStart, onCardTouchEnd, onCardTouchCancel, isLongPressRegisteredRef, touchHandledRef, shouldIgnoreMouseEvent }: {
   countsMap: Map<string, number>
   lastClickedCard: { suitKey: Suit['key']; number: number; clickType: 'left' | 'right' } | null
   onMouseAction: ({ suitKey, number, buttons, button }: { suitKey: Suit['key']; number: number; buttons: number; button: number }) => void
@@ -387,6 +435,8 @@ function CardList({ countsMap, lastClickedCard, onMouseAction, onCardTouchStart,
   onCardTouchEnd: (suitKey: Suit['key'], number: number) => void;
   onCardTouchCancel: () => void;
   isLongPressRegisteredRef: React.MutableRefObject<boolean>;
+  touchHandledRef: React.MutableRefObject<boolean>;
+  shouldIgnoreMouseEvent: React.MutableRefObject<boolean>;
 }) {
   const numbers = generateNumbers({ from: 1, to: 13 })
   return (
@@ -412,11 +462,21 @@ function CardList({ countsMap, lastClickedCard, onMouseAction, onCardTouchStart,
                     key={id}
                     type="button"
                     onMouseDown={e => {
+                      if (shouldIgnoreMouseEvent.current) {
+                        e.preventDefault();
+                        return;
+                      }
+                      // If a touch event just handled this, prevent mouse event duplication
+                      if (touchHandledRef.current) {
+                        e.preventDefault();
+                        return;
+                      }
                       if (isLongPressRegisteredRef.current) {
                         e.preventDefault();
                         return;
                       }
                       onMouseAction({ suitKey: suit.key, number: num, buttons: e.buttons, button: e.button });
+                      e.stopPropagation(); // 이벤트 버블링 중단
                     }}
                     onTouchStart={(e) => onCardTouchStart(suit.key, num, e)}
                     onTouchEnd={() => onCardTouchEnd(suit.key, num)}
@@ -463,11 +523,21 @@ function CardList({ countsMap, lastClickedCard, onMouseAction, onCardTouchStart,
                     key={id}
                     type="button"
                     onMouseDown={e => {
+                      if (shouldIgnoreMouseEvent.current) {
+                        e.preventDefault();
+                        return;
+                      }
+                      // If a touch event just handled this, prevent mouse event duplication
+                      if (touchHandledRef.current) {
+                        e.preventDefault();
+                        return;
+                      }
                       if (isLongPressRegisteredRef.current) {
                         e.preventDefault();
                         return;
                       }
                       onMouseAction({ suitKey: suit.key, number: num, buttons: e.buttons, button: e.button });
+                      e.stopPropagation(); // 이벤트 버블링 중단
                     }}
                     onTouchStart={(e) => onCardTouchStart(suit.key, num, e)}
                     onTouchEnd={() => onCardTouchEnd(suit.key, num)}
