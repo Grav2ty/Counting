@@ -8,10 +8,10 @@ export default function Page() {
   return (
     <main className="container flex min-h-screen flex-col justify-center">
       <section className="mx-auto w-full max-w-5xl">
-        <header className="mb-10 text-center">
-          <h1 className="text-4xl font-bold tracking-tight">Card Counter</h1>
-          <p className="mt-2 text-muted-foreground">
-            <span className="text-red-600">-</span> 인 경우 Low 카드 드로우 확률 높음, <span className="text-green-600">+</span> 인 경우 High 카드 드로우 확률 높음. 8, 9는 중립
+        <header className="mb-4 text-center md:mb-10">
+          <h1 className="text-2xl font-bold tracking-tight md:text-4xl">Card Counter</h1>
+          <p className="mt-2 text-sm text-muted-foreground md:text-base">
+            <span className="text-red-600">-</span> 인 경우 Low 카드 드로우 확률 높음,<br className="md:hidden" /> <span className="text-green-600">+</span> 인 경우 High 카드 드로우 확률 높음. 8, 9는 중립
           </p>
         </header>
 
@@ -171,10 +171,10 @@ function LandingGrid() {
       )}
       
       {/* 합계 섹션을 카드 리스트 위로 이동 */}
-      <section className="mb-6 rounded-xl border bg-card p-4">
+      <section className="mb-6 rounded-xl border bg-card p-2">
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">합계</span>
-          <span className={`text-2xl font-bold tabular-nums ${totalClass}`}>{total} ({history.length}장)</span>
+          <span className={`text-xl font-bold tabular-nums ${totalClass}`}>{total} ({history.length}장)</span>
         </div>
         <div className="mt-4 overflow-x-auto rounded-md border bg-background/40 p-2 [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:hidden">
           {history.length === 0 && (
@@ -194,7 +194,7 @@ function LandingGrid() {
           </div>
         </div>
         <div className="mt-3 flex justify-end">
-          <button type="button" onClick={resetTotalOnly} className="rounded-md border px-2.5 py-1 text-xs hover:bg-accent">합계 리셋</button>
+          <button type="button" onClick={resetTotalOnly} className="rounded-md border px-2 py-0.5 text-xs hover:bg-accent">합계 리셋</button>
         </div>
       </section>
 
@@ -211,7 +211,7 @@ function LandingGrid() {
         onMouseAction={({ suitKey, number, buttons, button }) => handleMouseAction({ suitKey, number, buttons, button })}
       />
 
-      <div className="mt-8 grid grid-cols-4 gap-6">
+      <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
         {SUITS.map(suit => (
           <button
             key={suit.key}
@@ -220,13 +220,13 @@ function LandingGrid() {
             className="text-left"
           >
             <Card className={`transition-colors cursor-pointer ${selectedSuitKey === suit.key ? 'ring-2 ring-primary' : ''}`} role="button">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+              <CardHeader className="p-3 md:p-6">
+                <CardTitle className="flex items-center justify-between text-base md:text-xl">
                   <span>{suit.label}</span>
-                  <span className={`text-3xl ${suit.color}`}>{suit.symbol}</span>
+                  <span className={`text-2xl md:text-3xl ${suit.color}`}>{suit.symbol}</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent />
+              <CardContent className="p-3 pt-0 md:p-6 md:pt-0" />
             </Card>
           </button>
         ))}
@@ -261,13 +261,13 @@ function NumbersPanel({ suit, lastClickedCard, isActive, getCount, onMouseAction
   const numbers = generateNumbers({ from: 1, to: 13 })
 
   return (
-    <section className={cn("mt-8 rounded-xl border bg-card p-6", suit.key === 'hearts' && "bg-dot-hearts", suit.key === 'diamonds' && "bg-dot-diamonds", suit.key === 'clubs' && "bg-dot-clubs", suit.key === 'spades' && "bg-dot-spades")}>
-      <header className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">{suit.label}</h2>
-        <span className={`text-2xl ${suit.color}`}>{suit.symbol}</span>
+    <section className={cn("mt-8 rounded-xl border bg-card p-2 md:p-6", suit.key === 'hearts' && "bg-dot-hearts", suit.key === 'diamonds' && "bg-dot-diamonds", suit.key === 'clubs' && "bg-dot-clubs", suit.key === 'spades' && "bg-dot-spades")}>
+      <header className="mb-2 flex items-center justify-between">
+        <h2 className="text-lg font-semibold md:text-xl">{suit.label}</h2>
+        <span className={`text-xl md:text-2xl ${suit.color}`}>{suit.symbol}</span>
       </header>
 
-      <div className="flex items-center gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="list" aria-label={`${suit.label} 숫자 선택`}>
+      <div className="grid grid-cols-7 gap-px" role="list" aria-label={`${suit.label} 숫자 선택`}>
         {numbers.map(num => {
           const active = isActive(num)
           const count = getCount(num)
@@ -280,7 +280,7 @@ function NumbersPanel({ suit, lastClickedCard, isActive, getCount, onMouseAction
               key={num}
               type="button"
               className={cn(
-                "relative shrink-0 rounded-lg border-2 px-6 py-4 text-lg font-semibold transition-colors shadow-md",
+                "relative flex items-center justify-center rounded-lg border-2 aspect-square text-xs font-semibold transition-colors shadow-md",
                 backgroundColorClass,
                 active && !isLastClicked && "ring-2 ring-primary",
                 isLastClicked && lastClickedCard?.clickType === 'left' && "ring-2 ring-red-500",
@@ -293,7 +293,7 @@ function NumbersPanel({ suit, lastClickedCard, isActive, getCount, onMouseAction
             >
               {getRankLabel(num)}
               {count >= 1 && (
-                <span className="absolute -right-2 -top-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-foreground px-2 text-xs font-bold text-background">+{count}</span>
+                <span className="absolute -right-1 -top-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-foreground text-[0.55rem] font-bold text-background">+{count}</span>
               )}
             </button>
           )
@@ -329,15 +329,15 @@ function CardList({ countsMap, lastClickedCard, onMouseAction }: {
 }) {
   const numbers = generateNumbers({ from: 1, to: 13 })
   return (
-    <section className="mt-2 grid grid-cols-2 gap-4">
-      <div className="col-span-1 space-y-3">
+    <section className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2 md:gap-4">
+      <div className="space-y-1">
         {SUITS.slice(0, 2).map(suit => (
-          <div key={suit.key} className={cn("rounded-lg border p-3", suit.key === 'hearts' && "bg-dot-hearts", suit.key === 'diamonds' && "bg-dot-diamonds")}>
-            <div className="mb-2 flex items-center gap-2">
-              <span className="text-md font-semibold">{suit.label}</span>
-              <span className={`text-xl ${suit.color}`}>{suit.symbol}</span>
+          <div key={suit.key} className={cn("rounded-lg border p-1 md:p-4", suit.key === 'hearts' && "bg-dot-hearts", suit.key === 'diamonds' && "bg-dot-diamonds")}>
+            <div className="mb-1 flex items-center gap-1">
+              <span className="text-sm font-semibold md:text-md">{suit.label}</span>
+              <span className={`text-lg md:text-xl ${suit.color}`}>{suit.symbol}</span>
             </div>
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-px">
               {numbers.map(num => {
                 const id = cardId({ suitKey: suit.key, number: num })
                 const count = countsMap.get(id) ?? 0
@@ -352,7 +352,7 @@ function CardList({ countsMap, lastClickedCard, onMouseAction }: {
                     type="button"
                     onMouseDown={e => onMouseAction({ suitKey: suit.key, number: num, buttons: e.buttons, button: e.button })}
                     className={cn(
-                      "relative flex items-center justify-center rounded-lg border-2 aspect-square text-lg font-semibold transition-colors shadow-md",
+                      "relative flex items-center justify-center rounded-lg border-2 aspect-square text-xs font-semibold transition-colors shadow-md",
                       backgroundColorClass,
                       active && !isLastClicked && "ring-2 ring-primary",
                       isLastClicked && lastClickedCard?.clickType === 'left' && "ring-2 ring-red-500",
@@ -363,7 +363,7 @@ function CardList({ countsMap, lastClickedCard, onMouseAction }: {
                   >
                     {getRankLabel(num)}
                     {count >= 1 && (
-                      <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground text-[0.6rem] font-bold text-background">+{count}</span>
+                      <span className="absolute -right-1 -top-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-foreground text-[0.55rem] font-bold text-background">+{count}</span>
                     )}
                   </button>
                 )
@@ -372,14 +372,14 @@ function CardList({ countsMap, lastClickedCard, onMouseAction }: {
           </div>
         ))}
       </div>
-      <div className="col-span-1 space-y-3">
+      <div className="space-y-1">
         {SUITS.slice(2, 4).map(suit => (
-          <div key={suit.key} className={cn("rounded-lg border p-3", suit.key === 'clubs' && "bg-dot-clubs", suit.key === 'spades' && "bg-dot-spades")}>
-            <div className="mb-2 flex items-center gap-2">
-              <span className="text-md font-semibold">{suit.label}</span>
-              <span className={`text-xl ${suit.color}`}>{suit.symbol}</span>
+          <div key={suit.key} className={cn("rounded-lg border p-1 md:p-4", suit.key === 'clubs' && "bg-dot-clubs", suit.key === 'spades' && "bg-dot-spades")}>
+            <div className="mb-1 flex items-center gap-1">
+              <span className="text-sm font-semibold md:text-md">{suit.label}</span>
+              <span className={`text-lg md:text-xl ${suit.color}`}>{suit.symbol}</span>
             </div>
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-px">
               {numbers.map(num => {
                 const id = cardId({ suitKey: suit.key, number: num })
                 const count = countsMap.get(id) ?? 0
@@ -394,7 +394,7 @@ function CardList({ countsMap, lastClickedCard, onMouseAction }: {
                     type="button"
                     onMouseDown={e => onMouseAction({ suitKey: suit.key, number: num, buttons: e.buttons, button: e.button })}
                     className={cn(
-                      "relative flex items-center justify-center rounded-lg border-2 aspect-square text-lg font-semibold transition-colors shadow-md",
+                      "relative flex items-center justify-center rounded-lg border-2 aspect-square text-xs font-semibold transition-colors shadow-md",
                       backgroundColorClass,
                       active && !isLastClicked && "ring-2 ring-primary",
                       isLastClicked && lastClickedCard?.clickType === 'left' && "ring-2 ring-red-500",
@@ -405,7 +405,7 @@ function CardList({ countsMap, lastClickedCard, onMouseAction }: {
                   >
                     {getRankLabel(num)}
                     {count >= 1 && (
-                      <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground text-[0.6rem] font-bold text-background">+{count}</span>
+                      <span className="absolute -right-1 -top-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-foreground text-[0.55rem] font-bold text-background">+{count}</span>
                     )}
                   </button>
                 )
