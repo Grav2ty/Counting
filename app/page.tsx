@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +28,9 @@ function LandingGrid() {
   const [history, setHistory] = useState<{ score: number; cardNumber: number; suitKey: Suit['key'] }[]>([])
   const [lastClickedCard, setLastClickedCard] = useState<{ suitKey: Suit['key']; number: number; clickType: 'left' | 'right' } | null>(null)
   const [showLimitPopup, setShowLimitPopup] = useState<boolean>(false)
+
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressRegisteredRef = useRef(false); // Flag to indicate if long press was successfully registered
 
   function handleSelectSuit({ key }: { key: string }) {
     if (!key) return
@@ -99,7 +102,7 @@ function LandingGrid() {
     });
   }
 
-  function handleMouseAction({ suitKey, number, buttons, button }: { suitKey: Suit['key']; number: number; buttons: number; button: number }) {
+  const handleMouseAction = useCallback(({ suitKey, number, buttons, button }: { suitKey: Suit['key']; number: number; buttons: number; button: number }) => {
     const score = scoreFor(number)
     
     // 마지막으로 클릭된 카드 정보 업데이트
@@ -128,7 +131,40 @@ function LandingGrid() {
       incrementCard({ suitKey, number })
       pushHistory({ delta: score, cardNumber: number, suitKey })
     }
-  }
+  }, [decrementCard, incrementCard, pushHistory, removeLastHistoryValue]);
+
+  const handleCardTouchStart = useCallback((suitKey: Suit['key'], number: number, e: React.TouchEvent<HTMLButtonElement>) => {
+    e.preventDefault(); // Prevent default mouse events
+    isLongPressRegisteredRef.current = false;
+    if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+    }
+    longPressTimerRef.current = setTimeout(() => {
+        isLongPressRegisteredRef.current = true;
+        handleMouseAction({ suitKey, number, buttons: 2, button: 2 }); // Simulate right-click
+        longPressTimerRef.current = null;
+    }, 1500); // 1.5 seconds
+  }, [handleMouseAction]);
+
+  const handleCardTouchEnd = useCallback((suitKey: Suit['key'], number: number) => {
+      if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+      }
+      if (!isLongPressRegisteredRef.current) {
+          // If long press was not registered, it's a short press/tap
+          handleMouseAction({ suitKey, number, buttons: 0, button: 0 }); // Simulate left-click
+      }
+      isLongPressRegisteredRef.current = false; // Reset for next interaction
+  }, [handleMouseAction]);
+
+  const handleCardTouchCancel = useCallback(() => {
+      if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+      }
+      isLongPressRegisteredRef.current = false;
+  }, []);
 
   const selectedSuit = selectedSuitKey ? SUITS.find(s => s.key === selectedSuitKey) ?? null : null
   const total = history.reduce((acc, n) => acc + n.score, 0)
@@ -209,6 +245,10 @@ function LandingGrid() {
         countsMap={countsMap}
         lastClickedCard={lastClickedCard}
         onMouseAction={({ suitKey, number, buttons, button }) => handleMouseAction({ suitKey, number, buttons, button })}
+        onCardTouchStart={handleCardTouchStart}
+        onCardTouchEnd={handleCardTouchEnd}
+        onCardTouchCancel={handleCardTouchCancel}
+        isLongPressRegisteredRef={isLongPressRegisteredRef}
       />
 
       <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
@@ -245,18 +285,26 @@ function LandingGrid() {
           isActive={(n) => (countsMap.get(cardId({ suitKey: selectedSuit.key, number: n })) ?? 0) >= 1}
           getCount={(n) => countsMap.get(cardId({ suitKey: selectedSuit.key, number: n })) ?? 0}
           onMouseAction={({ number, buttons, button }) => handleMouseAction({ suitKey: selectedSuit.key, number, buttons, button })}
+          onCardTouchStart={handleCardTouchStart}
+          onCardTouchEnd={handleCardTouchEnd}
+          onCardTouchCancel={handleCardTouchCancel}
+          isLongPressRegisteredRef={isLongPressRegisteredRef}
         />
       )}
     </div>
   )
 }
 
-function NumbersPanel({ suit, lastClickedCard, isActive, getCount, onMouseAction }: {
+function NumbersPanel({ suit, lastClickedCard, isActive, getCount, onMouseAction, onCardTouchStart, onCardTouchEnd, onCardTouchCancel, isLongPressRegisteredRef }: {
   suit: Suit
   lastClickedCard: { suitKey: Suit['key']; number: number; clickType: 'left' | 'right' } | null
   isActive: (n: number) => boolean
   getCount: (n: number) => number
   onMouseAction: ({ number, buttons, button }: { number: number; buttons: number; button: number }) => void
+  onCardTouchStart: (suitKey: Suit['key'], number: number, e: React.TouchEvent<HTMLButtonElement>) => void;
+  onCardTouchEnd: (suitKey: Suit['key'], number: number) => void;
+  onCardTouchCancel: () => void;
+  isLongPressRegisteredRef: React.MutableRefObject<boolean>;
 }) {
   const numbers = generateNumbers({ from: 1, to: 13 })
 
@@ -289,7 +337,16 @@ function NumbersPanel({ suit, lastClickedCard, isActive, getCount, onMouseAction
               aria-pressed={active}
               aria-label={`${suit.label} ${getRankLabel(num)}`}
               role="listitem"
-              onMouseDown={e => onMouseAction({ number: num, buttons: e.buttons, button: e.button })}
+              onMouseDown={e => {
+                if (isLongPressRegisteredRef.current) {
+                  e.preventDefault();
+                  return;
+                }
+                onMouseAction({ number: num, buttons: e.buttons, button: e.button });
+              }}
+              onTouchStart={(e) => onCardTouchStart(suit.key, num, e)}
+              onTouchEnd={() => onCardTouchEnd(suit.key, num)}
+              onTouchCancel={onCardTouchCancel}
             >
               {getRankLabel(num)}
               {count >= 1 && (
@@ -322,10 +379,14 @@ interface Suit {
   symbol: string
 }
 
-function CardList({ countsMap, lastClickedCard, onMouseAction }: {
+function CardList({ countsMap, lastClickedCard, onMouseAction, onCardTouchStart, onCardTouchEnd, onCardTouchCancel, isLongPressRegisteredRef }: {
   countsMap: Map<string, number>
   lastClickedCard: { suitKey: Suit['key']; number: number; clickType: 'left' | 'right' } | null
   onMouseAction: ({ suitKey, number, buttons, button }: { suitKey: Suit['key']; number: number; buttons: number; button: number }) => void
+  onCardTouchStart: (suitKey: Suit['key'], number: number, e: React.TouchEvent<HTMLButtonElement>) => void;
+  onCardTouchEnd: (suitKey: Suit['key'], number: number) => void;
+  onCardTouchCancel: () => void;
+  isLongPressRegisteredRef: React.MutableRefObject<boolean>;
 }) {
   const numbers = generateNumbers({ from: 1, to: 13 })
   return (
@@ -350,7 +411,16 @@ function CardList({ countsMap, lastClickedCard, onMouseAction }: {
                   <button
                     key={id}
                     type="button"
-                    onMouseDown={e => onMouseAction({ suitKey: suit.key, number: num, buttons: e.buttons, button: e.button })}
+                    onMouseDown={e => {
+                      if (isLongPressRegisteredRef.current) {
+                        e.preventDefault();
+                        return;
+                      }
+                      onMouseAction({ suitKey: suit.key, number: num, buttons: e.buttons, button: e.button });
+                    }}
+                    onTouchStart={(e) => onCardTouchStart(suit.key, num, e)}
+                    onTouchEnd={() => onCardTouchEnd(suit.key, num)}
+                    onTouchCancel={onCardTouchCancel}
                     className={cn(
                       "relative flex items-center justify-center rounded-lg border-2 aspect-square text-xs font-semibold transition-colors shadow-md",
                       backgroundColorClass,
@@ -392,7 +462,16 @@ function CardList({ countsMap, lastClickedCard, onMouseAction }: {
                   <button
                     key={id}
                     type="button"
-                    onMouseDown={e => onMouseAction({ suitKey: suit.key, number: num, buttons: e.buttons, button: e.button })}
+                    onMouseDown={e => {
+                      if (isLongPressRegisteredRef.current) {
+                        e.preventDefault();
+                        return;
+                      }
+                      onMouseAction({ suitKey: suit.key, number: num, buttons: e.buttons, button: e.button });
+                    }}
+                    onTouchStart={(e) => onCardTouchStart(suit.key, num, e)}
+                    onTouchEnd={() => onCardTouchEnd(suit.key, num)}
+                    onTouchCancel={onCardTouchCancel}
                     className={cn(
                       "relative flex items-center justify-center rounded-lg border-2 aspect-square text-xs font-semibold transition-colors shadow-md",
                       backgroundColorClass,
